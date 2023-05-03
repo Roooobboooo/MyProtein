@@ -10,9 +10,7 @@ ${URL}=    https://www.datart.sk/
 @{ProductNames}
 @{BasketProductNames}
 @{BasketProductNamesRemove}
-
-
-
+${#}=    0
 *** Test Cases ***
 Finding 3 most expensive iPhones
     #Opening the browser and closing additional popups/cookies
@@ -30,20 +28,45 @@ Finding 3 most expensive iPhones
         Wait Until Element Is Visible    xpath=//li[contains(@class,'sort-panel-slider-item')]//a[contains(text(),'Najdrahší')]
         Click Element    xpath=//li[contains(@class,'sort-panel-slider-item')]//a[contains(text(),'Najdrahší')]
         sleep    2s
+
+    #Filtering for number of products on page
+    Click Element    xpath=//div[@class="pagination-per-page"]/..//a[contains(text(),"48")]
+
     #Getting prices
+    #First Page
+    ${AllItemPrices}=    Get WebElements    xpath=//div[@class='item-price']
+    FOR    ${Price}    IN    @{AllItemPrices}
+            ${Prices}=    Get Element Attribute    ${Price}    data-product-price
+            ${PricesInt}=    Convert To Integer    ${Prices}  
+            Append To List    ${PList}    ${PricesInt}
+        END
+    #Next Pages
+    ${Pages}=    Get WebElements    xpath=//a[@class="page-link "]
+    ${LastPage}    Get Text    ${Pages}[-1]
+    Log    ${LastPage}
+    ${Page}=    Get WebElement    xpath=//a[@class="page-link "]
+    
+    FOR    ${Page}    IN RANGE    1    ${LastPage}    1
+    Click Element    xpath=//a[@class="page-link next-page "]
         ${AllItemPrices}=    Get WebElements    xpath=//div[@class='item-price']
         FOR    ${Price}    IN    @{AllItemPrices}
             ${Prices}=    Get Element Attribute    ${Price}    data-product-price
             ${PricesInt}=    Convert To Integer    ${Prices}  
             Append To List    ${PList}    ${PricesInt}
         END
-    #Price Comparison
-        ${PP}=    Get From List    ${PList}    0
-        Log To Console    ${PP}
-        ${PP1}=    Convert To Integer    ${PP}
+    END
+        #${PlistLast}=    Get Slice From List    ${PList}    -1
         FOR    ${Counter}    IN    @{PList}
-            Should Be True    ${PP1}>=${Counter}
+         IF    ${Counter} == ${PList}[-1]    BREAK
+            Log    ${Counter}
+            ${#+1}=    Evaluate    ${#}+1
+            Should Be True    ${Counter}>=${PList}[${#+1}]
+            ${#}=    Evaluate    ${#}+1
+            
         END
+    
+    #Changing the page to #1
+    Click Element    xpath=//li[@class="page-item"]/..//a[contains(text(),'1')]
     #Picking 3 most expensive items
         ${BuyButtons}=    Get WebElements    xpath=//div[@class="item-cart"]/..//span[contains(text(),'Vložiť do košíka')]
         ${BuyButton}=    Get Slice From List    ${BuyButtons}    0    3 
@@ -55,6 +78,7 @@ Finding 3 most expensive iPhones
             Click Element    xpath=//div[@class="modal-content"]/..//button[@aria-label="Close"]
             Set Selenium Speed    0s
         END
+
         #Start of Comparison method
         ${AllProductNames}=    Get WebElements    xpath=//h3[@class="item-title"]/..//a[contains(@href,"/mobilny-telefon-apple")]
         ${AllProductNames1}=    Get Slice From List    ${AllProductNames}    0    3
@@ -63,6 +87,7 @@ Finding 3 most expensive iPhones
             Append To List    ${ProductNames}    ${PNs}    
         END
         Log    ${ProductNames}
+
         #Opening and checking the basket
         Click Element    xpath=//div[@class="head-cart-count"]/..//img[contains(@class,"cart-full")]
         ${AllBasketProductNames}=    Get WebElements    xpath=//div[@class="basket-item-title"]//a[contains(@href,'mobilny-telefon-apple-iphone')]
@@ -72,6 +97,7 @@ Finding 3 most expensive iPhones
         END
         Log    ${BasketProductNames}
         Should Be Equal    ${ProductNames}    ${BasketProductNames}
+
         #Removing item and chcecking if it is removed
         Click Element   xpath=//div[@class="basket-item-remove"]
         Sleep    1s
@@ -82,5 +108,6 @@ Finding 3 most expensive iPhones
         END
         Log    ${BasketProductNamesRemove}
         Should Not Be Equal    ${BasketProductNames}    ${BasketProductNamesRemove}
+
         #Closing Borwser
         Close Browser
